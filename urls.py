@@ -9,6 +9,7 @@ fronts = (other_front,)
 
 routes = {
     '/': Index(),
+    '/index/': Index(),
     '/about/': About(),
     '/contacts/': Contacts(),
 }
