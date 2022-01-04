@@ -53,6 +53,12 @@ class Framework:
 
     @staticmethod
     def decode_value(data) -> dict:
+        """
+        Функция, декодирующая полученный словарь в utf-8 кодировку.
+
+        :param data: словарь с параметрами url-запроса.
+        :return: словарь с параметрами в utf-8 кодировке.
+        """
         new_data = {}
         for k, v in data.items():
             val = bytes(v.replace('%', '=').replace("+", " "), 'utf-8')
