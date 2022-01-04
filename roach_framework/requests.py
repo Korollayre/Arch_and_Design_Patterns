@@ -1,7 +1,7 @@
 class GetRequests:
 
     @staticmethod
-    def get_request_params(environ):
+    def get_request_params(environ) -> dict:
         """
         Функция, преобразующая строку url-запроса
         в словарь с параметрами этого запроса.

@@ -2,7 +2,7 @@ from views import Index, About, Contacts
 
 
 def other_front(request):
-    request['key'] = 'key'
+    request['key'] = 'value'
 
 
 fronts = (other_front,)
