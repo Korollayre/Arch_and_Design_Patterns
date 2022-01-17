@@ -53,6 +53,15 @@ class PostRequests:
 
             for item in params:
                 key, value = item.split('=')
-                res[key] = value
+                if key in res.keys():
+                    if type(res[key]) != list:
+                        last_value = res[key]
+                        res[key] = []
+                        res[key].append(last_value)
+                        res[key].append(value)
+                    else:
+                        res[key].append(value)
+                else:
+                    res[key] = value
 
         return res

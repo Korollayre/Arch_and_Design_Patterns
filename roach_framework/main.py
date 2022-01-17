@@ -4,7 +4,7 @@ from requests import GetRequests, PostRequests
 
 class PageNotFound404Error:
     """
-    Класс - исключение для обработки ошибки вызова несуществующей страницы.
+    Класс-исключение, обрабатывающий ошибки вызова несуществующей страницы.
     """
 
     def __call__(self, *args, **kwargs):
@@ -13,7 +13,7 @@ class PageNotFound404Error:
 
 class Framework:
     """
-    Класс - основная логика работы фреймворка
+    Класс — основная логика работы фреймворка
     """
 
     def __init__(self, urls, middlewares):
@@ -61,7 +61,15 @@ class Framework:
         """
         new_data = {}
         for k, v in data.items():
-            val = bytes(v.replace('%', '=').replace("+", " "), 'utf-8')
-            val_decode_str = decodestring(val).decode('utf-8')
-            new_data[k] = val_decode_str
+            if type(v) == str:
+                val = bytes(v.replace('%', '=').replace("+", " "), 'utf-8')
+                val_decode_str = decodestring(val).decode('utf-8')
+                new_data[k] = val_decode_str
+            else:
+                for el in v:
+                    idx = v.index(el)
+                    val = bytes(el.replace('%', '=').replace("+", " "), 'utf-8')
+                    val_decode_str = decodestring(val).decode('utf-8')
+                    v[idx] = val_decode_str
+                new_data[k] = v
         return new_data
