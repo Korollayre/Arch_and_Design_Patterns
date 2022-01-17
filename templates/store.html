@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block menu %}
+<div id="menubar">
+    <ul id="menu">
+        <!-- put class="selected" in the li tag for the selected page - to highlight which page you're on -->
+        <li><a href="/index/">Home</a></li>
+        <li class="selected"><a href="/store/">Store</a></li>
+        <li><a href="/about/">About</a></li>
+        <li><a href="/contacts/">Contact Us</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content_header"></div>
+<div id="site_content">
+    <div class="sidebar">
+        <!-- insert your sidebar items here -->
+        <h3>Latest News</h3>
+        <h5>January 1st, 2011</h5>
+        <p>2011 sees the redesign of our website. Take a look around and let us know what you think.<br/><a
+                href="#">Read more</a></p>
+        <h5>January 1st, 2011</h5>
+        <p>2011 sees the redesign of our website. Take a look around and let us know what you think.<br/><a
+                href="#">Read more</a></p>
+        <h3>Useful Links</h3>
+        <ul>
+            <li><a href="#">link 1</a></li>
+            <li><a href="#">link 2</a></li>
+            <li><a href="#">link 3</a></li>
+            <li><a href="#">link 4</a></li>
+        </ul>
+        <h3>Search</h3>
+        <form method="post" action="#" id="search_form">
+            <p>
+                <input class="search" type="text" name="search_field" value="Enter keywords....."/>
+                <input name="search" type="image" style="border: 0; margin: 0 0 -9px 5px;"
+                       src="../static/img/search.png"
+                       alt="Search" title="Search"/>
+            </p>
+        </form>
+    </div>
+    <div id="content">
+        <!-- insert the page content here -->
+        <h1>Список категорий</h1>
+        <ul>
+            {% for category in categories %}
+            {% if category.main_category %}
+
+            {% else %}
+            <li>
+                {{ category.name }} Количество игр: {{ category.games_count() }}
+            </li>
+            <ul>
+                {% for sub_category in category.sub_categories %}
+                <li>
+                    {{ sub_category.name }} Количество игр: {{ sub_category.games_count() }}
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% endif %}
+            {% endfor %}
+        </ul>
+        <a href="/create-category/">Создание категории</a>
+        <h2>Список всех игр</h2>
+        <ul>
+            {% for game in games %}
+            <div>
+                <p>
+                    <span style="font-size: 16px">{{ game.name }}</span>
+                    <a href="/copy-game/?name={{game.name}}">Создать копию игры</a>
+                </p>
+                <p>
+                    Цена: {{ game.price }}
+                </p>
+                <p>
+                    Описание: {{ game.description }}
+                </p>
+                <p>
+                    Категории игры:
+                    {% for category in game.categories %}
+                    {{ category.name }}
+                    {% endfor %}
+                </p>
+                <p>
+                    Дата выхода: {{ game.release_date }}
+                </p>
+            </div>
+
+            {% endfor %}
+        </ul>
+        {% if categories %}
+        <a href="/create-game/">Создание игры</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+<div id="content_footer"></div>
+{% endblock %}
