@@ -8,7 +8,7 @@ LOGGER = Logger('views')
 ROUTES = {}
 
 
-@AppRoute(routes=ROUTES, url='/index/')
+@AppRoute(routes=ROUTES, url='/')
 class Index:
     @TimeDeco(name='Index')
     def __call__(self, request):
