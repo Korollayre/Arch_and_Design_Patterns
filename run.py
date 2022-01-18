@@ -1,10 +1,11 @@
 from wsgiref.simple_server import make_server
 
 from roach_framework.main import Framework
-from urls import routes, fronts
+from urls import FRONTS
+from views import ROUTES
 
-app = Framework(routes, fronts)
+APP = Framework(ROUTES, FRONTS)
 
-with make_server('', 8000, app) as server:
+with make_server('', 8000, APP) as server:
     print(f'Server running on http://localhost:{server.server_port}...')
     server.serve_forever()
