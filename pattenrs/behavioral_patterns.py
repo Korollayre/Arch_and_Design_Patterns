@@ -25,6 +25,19 @@ class AddGameEmailNotifier(Observer):
               f'Игра {subject.games[-1]} была добавлена в категорию {subject.name}!')
 
 
+class Subject:
+    """
+    Класс-интерфейс, основная задача которого -
+    нотификация наблюдателей observers.
+    """
+    def __init__(self):
+        self.observers = []
+
+    def __notify(self):
+        for item in self.observers:
+            item.update(self)
+
+
 class TemplateView:
     """
     Класс-шаблон, содержащий базовый интерфейс для
