@@ -50,7 +50,7 @@ class GamePrototype:
 
 class Game(GamePrototype):
     """
-    Класс-общий интерфейс игр.
+    Класс - общий интерфейс игр.
     """
 
     def __init__(self, name, description, price, release_date, categories):
