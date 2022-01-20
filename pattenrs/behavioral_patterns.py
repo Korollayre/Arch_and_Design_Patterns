@@ -2,13 +2,20 @@ from abc import ABCMeta, abstractmethod
 
 
 class Observer(metaclass=ABCMeta):
-
+    """
+    Класс-абстракция описывающий необходимый
+    интерфейс конкретных классов-наблюдателей.
+    """
     @abstractmethod
     def update(self, subject):
         pass
 
 
 class AddGameEmailNotifier(Observer):
+    """
+    Класс - конкретная реализация класса-абстракции Observer.
+    Класс выводит в консоль сообщение о добавлении игры в категорию.
+    """
     def update(self, subject):
         print(f'--- EMAIL NOTIFIER --- \n'
               f'Игра {subject.games[-1]} была добавлена в категорию {subject.name}!')
