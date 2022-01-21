@@ -64,7 +64,7 @@ class Game(GamePrototype):
 
         for category in categories:
             category.games.append(self)
-            category.__notify()
+            category.notify()
 
 
 class Category(Subject):
