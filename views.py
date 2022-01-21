@@ -1,9 +1,13 @@
 from roach_framework.templator import render
 from pattenrs.creational_patterns import Engine, Logger
 from pattenrs.structural_patterns import AppRoute, TimeDeco
+from pattenrs.behavioral_patterns import AddGameEmailNotifier, ListView, CreateView
+
+LOGGER = Logger('views')
 
 INTERFACE = Engine()
-LOGGER = Logger('views')
+
+EMAIL_NOTIFIER = AddGameEmailNotifier()
 
 ROUTES = {}
 
@@ -60,6 +64,8 @@ class CategoryCreate:
                 category = None
 
             new_category = INTERFACE.create_category(name, category)
+
+            new_category.observers.append(EMAIL_NOTIFIER)
 
             INTERFACE.categories.append(new_category)
 
@@ -143,3 +149,59 @@ class GameCopy:
                                 title='Store',
                                 categories=INTERFACE.categories,
                                 games=INTERFACE.games)
+
+
+@AppRoute(routes=ROUTES, url='/games-list/')
+class GamesListView(ListView):
+    template_name = 'games_list.html'
+    context_object_name = 'games'
+
+    def get_request_params(self):
+        return self.request['request_params']
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['title'] = 'Games List'
+        context['category_id'] = self.get_request_params()['id']
+        return context
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset.clear()
+        category = INTERFACE.find_category_by_id(int(self.get_request_params()['id']))
+        queryset.extend(category.games)
+        if category.sub_categories:
+            for sub_category in category.sub_categories:
+                queryset.extend(sub_category.games)
+        return queryset
+
+
+@AppRoute(routes=ROUTES, url='/add-game/')
+class GameCreateView(CreateView):
+    template_name = 'add_game.html'
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['title'] = 'Game Adding'
+        category_id = int(self.request['request_params']['id'])
+        context['category'] = INTERFACE.find_category_by_id(category_id)
+        return context
+
+    def create_obj(self, data: dict):
+        name = data['name']
+        name = INTERFACE.decode_value(name)
+
+        description = data['description']
+        description = INTERFACE.decode_value(description)
+
+        price = data['price']
+        release_date = data['release_date']
+
+        category = [INTERFACE.find_category_by_id(int(data['category']))]
+
+        new_game = INTERFACE.create_game(name,
+                                         description,
+                                         price,
+                                         release_date,
+                                         category)
+        INTERFACE.games.append(new_game)
