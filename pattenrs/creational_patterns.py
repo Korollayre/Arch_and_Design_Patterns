@@ -1,6 +1,8 @@
 from copy import deepcopy
 from quopri import decodestring
 
+from pattenrs.behavioral_patterns import ConsoleWriter, Subject
+
 
 class User:
     """
@@ -62,9 +64,10 @@ class Game(GamePrototype):
 
         for category in categories:
             category.games.append(self)
+            category.__notify()
 
 
-class Category:
+class Category(Subject):
     """
     Класс-интерфейс категорий игр.
     """
@@ -77,6 +80,7 @@ class Category:
         self.main_category = category
         self.sub_categories = []
         self.games = []
+        super().__init__()
 
         if self.main_category:
             self.main_category.sub_categories.append(self)
@@ -136,7 +140,7 @@ class Engine:
 
     def get_game(self, name):
         """
-        Метод, осуществляющий поиск игр в соответсвтии с названием игры.
+        Метод, осуществляющий поиск игр в соответствии с названием игры.
 
         :param name: название игры.
         :return: объект класса Game, содержащий название игры, её описание,
@@ -181,9 +185,10 @@ class Logger(metaclass=LoggerNameVerifier):
     Класс-логгер.
     """
 
-    def __init__(self, name):
+    def __init__(self, name, writer=ConsoleWriter()):
         self.name = name
+        self.writer = writer
 
-    @staticmethod
-    def log(text):
-        print('Log----->', text)
+    def log(self, text):
+        text = f'Log-----> {text}'
+        self.writer.write(text)
