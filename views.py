@@ -1,7 +1,7 @@
 from roach_framework.templator import render
 from pattenrs.creational_patterns import Engine, Logger
 from pattenrs.structural_patterns import AppRoute, TimeDeco
-from pattenrs.behavioral_patterns import AddGameEmailNotifier, ListView, CreateView
+from pattenrs.behavioral_patterns import AddGameEmailNotifier, ListView, CreateView, BaseSerializer
 
 LOGGER = Logger('views')
 
@@ -205,3 +205,17 @@ class GameCreateView(CreateView):
                                          release_date,
                                          category)
         INTERFACE.games.append(new_game)
+
+
+@AppRoute(routes=ROUTES, url='/categories-api/')
+class CategoriesApi:
+    @TimeDeco(name='CategoriesApi')
+    def __call__(self, request):
+        return '200 OK', BaseSerializer(INTERFACE.categories).save()
+
+
+@AppRoute(routes=ROUTES, url='/games-api/')
+class GamesApi:
+    @TimeDeco(name='GamesApi')
+    def __call__(self, request):
+        return '200 OK', BaseSerializer(INTERFACE.games).save()

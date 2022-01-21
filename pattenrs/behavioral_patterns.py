@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from jsonpickle import dumps, loads
 
 from roach_framework.templator import render
 
@@ -107,6 +108,19 @@ class CreateView(TemplateView):
             return self.render_template_with_context()
         else:
             return super().__call__(request)
+
+
+class BaseSerializer:
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def save(self):
+        return dumps(self.obj)
+
+    @staticmethod
+    def load(data):
+        return loads(data)
 
 
 class ConsoleWriter:
