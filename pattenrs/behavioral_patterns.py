@@ -22,7 +22,7 @@ class AddGameEmailNotifier(Observer):
 
     def update(self, subject):
         print(f'--- EMAIL NOTIFIER --- \n'
-              f'Игра {subject.games[-1]} была добавлена в категорию {subject.name}!')
+              f'Игра {subject.games[-1].name} была добавлена в категорию {subject.name}!')
 
 
 class Subject:
