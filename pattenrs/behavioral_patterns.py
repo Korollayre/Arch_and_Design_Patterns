@@ -30,6 +30,7 @@ class Subject:
     Класс-интерфейс, основная задача которого -
     нотификация наблюдателей observers.
     """
+
     def __init__(self):
         self.observers = []
 
@@ -57,6 +58,7 @@ class TemplateView:
         return '200 OK', render(template_name, **context)
 
     def __call__(self, request):
+        self.request = request
         return self.render_template_with_context()
 
 
@@ -95,7 +97,7 @@ class CreateView(TemplateView):
     def get_request_data(request):
         return request['data']
 
-    def create_obj(self, data):
+    def create_obj(self, data: dict):
         pass
 
     def __call__(self, request):
