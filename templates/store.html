@@ -50,12 +50,12 @@
 
             {% else %}
             <li>
-                {{ category.name }} Количество игр: {{ category.games_count() }}
+                {{ category.name }} Количество игр: {{ category.games_count() }}. <a href="/games-list/?id={{ category.id }}">Посмотреть игры</a>
             </li>
             <ul>
                 {% for sub_category in category.sub_categories %}
                 <li>
-                    {{ sub_category.name }} Количество игр: {{ sub_category.games_count() }}
+                    {{ sub_category.name }} Количество игр: {{ sub_category.games_count() }}. <a href="/games-list/?id={{ sub_category.id }}">Посмотреть игры</a>
                 </li>
                 {% endfor %}
             </ul>
