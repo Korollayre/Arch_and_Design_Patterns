@@ -1,7 +1,12 @@
 from copy import deepcopy
+from sqlite3 import connect
 from quopri import decodestring
 
+from errors import *
 from pattenrs.behavioral_patterns import ConsoleWriter, Subject
+from unit_of_work import DomainObject
+
+CONNECTION = connect('db.sqlite')
 
 
 class User:
@@ -50,7 +55,7 @@ class GamePrototype:
         return deepcopy(self)
 
 
-class Game(GamePrototype):
+class Game(GamePrototype, DomainObject):
     """
     Класс - общий интерфейс игр.
     """
@@ -67,15 +72,75 @@ class Game(GamePrototype):
             category.notify()
 
 
+class GameMapper:
+    def __init__(self, conn):
+        self.connection = conn
+        self.cursor = self.connection.cursor()
+        self.table_name = 'Games'
+
+    def all(self):
+        statement = f'SELECT * from {self.table_name}'
+        self.cursor.execute(statement)
+        res = []
+        for item in self.cursor.fetchall():
+            game = Game(*item[1:])
+            game.id = item[0]
+            res.append(game)
+        return res
+
+    def find_by_id(self, obj_id):
+        statement = f'SELECT * FROM {self.table_name} WHERE id = ?'
+        self.cursor.execute(statement, (obj_id,))
+        res = self.cursor.fetchone()
+        if res:
+            game = Game(*res[1:])
+            game.id = res[0]
+            return game
+        else:
+            raise RecordNotFoundException(f'Record with id={obj_id} not found')
+
+    def insert(self, obj):
+        statement = f'INSERT INTO {self.table_name} ' \
+                    f'(name, description, price, release_date) ' \
+                    f'VALUES (?,?,?,?)'
+        self.cursor.execute(statement, (obj.name,
+                                        obj.description,
+                                        obj.price,
+                                        obj.release_date))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbCommitException(e.args)
+
+    def update(self, obj):
+        statement = f'UPDATE {self.table_name} ' \
+                    f'SET name = ?, description = ?, price = ?, release_date = ? ' \
+                    f'WHERE id = ?'
+        self.cursor.execute(statement, (obj.name,
+                                        obj.description,
+                                        obj.price,
+                                        obj.release_date,
+                                        obj.id))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbUpdateException(e.args)
+
+    def delete(self, obj_id):
+        statement = f'DELETE FROM {self.table_name} WHERE id = ?'
+        self.cursor.execute(statement, (obj_id,))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbDeleteException(e.args)
+
+
 class Category(Subject):
     """
     Класс-интерфейс категорий игр.
     """
-    auto_id = 0
 
     def __init__(self, name, category):
-        self.id = Category.auto_id
-        Category.auto_id += 1
         self.name = name
         self.main_category = category
         self.sub_categories = []
@@ -96,6 +161,87 @@ class Category(Subject):
             for category in self.sub_categories:
                 result += category.games_count()
         return result
+
+
+class CategoryMapper:
+    def __init__(self, conn):
+        self.connection = conn
+        self.cursor = self.connection.cursor()
+        self.table_name = 'Categories'
+
+    def all(self):
+        statement = f'SELECT * from {self.table_name}'
+        self.cursor.execute(statement)
+        res = []
+        for item in self.cursor.fetchall():
+            category = Category(*item[1:])
+            category.id = item[0]
+            res.append(category)
+        return res
+
+    def find_by_id(self, obj_id):
+        statement = f'SELECT * FROM {self.table_name} WHERE id = ?'
+        self.cursor.execute(statement, (obj_id,))
+        res = self.cursor.fetchone()
+        if res:
+            category = Category(*res[1:])
+            category.id = res[0]
+            return category
+        else:
+            raise RecordNotFoundException(f'Record with id={obj_id} not found')
+
+    def insert(self, obj):
+        statement = f'INSERT INTO {self.table_name} ' \
+                    f'(name, main_category, sub_categories, games) ' \
+                    f'VALUES (?,?,?,?)'
+        self.cursor.execute(statement, (obj.name,
+                                        obj.main_category,
+                                        obj.sub_categories,
+                                        obj.games))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbCommitException(e.args)
+
+    def update(self, obj):
+        statement = f'UPDATE {self.table_name} ' \
+                    f'SET name = ?, main_category = ?, sub_categories = ?, games = ? ' \
+                    f'WHERE id = ?'
+        self.cursor.execute(statement, (obj.name,
+                                        obj.main_category,
+                                        obj.sub_categories,
+                                        obj.games,
+                                        obj.id))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbUpdateException(e.args)
+
+    def delete(self, obj_id):
+        statement = f'DELETE FROM {self.table_name} WHERE id = ?'
+        self.cursor.execute(statement, (obj_id,))
+        try:
+            self.connection.commit()
+        except Exception as e:
+            raise DbDeleteException(e.args)
+
+
+class MapperRegistry:
+    mappers = {
+        'game': GameMapper,
+        'category': CategoryMapper,
+    }
+
+    @staticmethod
+    def get_mapper(obj):
+        if isinstance(obj, Game):
+            return GameMapper(CONNECTION)
+        elif isinstance(obj, Category):
+            return CategoryMapper(CONNECTION)
+
+    @staticmethod
+    def get_current_mapper(name):
+        return MapperRegistry.mappers[name](CONNECTION)
 
 
 class Engine:
