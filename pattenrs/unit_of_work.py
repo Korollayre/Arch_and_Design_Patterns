@@ -7,20 +7,22 @@ class UnitOfWork:
     данных модели, и осуществлять внесение этих изменений
     в БД в виде единой транзакции.
     """
+
     current = local()
 
-    def __init__(self, mapper_registry):
+    def __init__(self):
         """
         Для отслеживания изменений используются 3 списка:
         self.new_objects - список новых объектов модели
         self.modify_objects - список измененных объектов модели
         self.removed_objects - список удаленных объектов модели
         """
-        self.mapper_registry = mapper_registry
-
         self.new_objects = []
         self.modify_objects = []
         self.removed_objects = []
+
+    def set_mapper_registry(self, mapper_registry):
+        self.mapper_registry = mapper_registry
 
     def register_new(self, obj):
         """

@@ -1,13 +1,24 @@
+from copy import deepcopy
+
 from roach_framework.templator import render
-from pattenrs.creational_patterns import Engine, Logger
+from pattenrs.creational_patterns import Engine, Logger, MapperRegistry
 from pattenrs.structural_patterns import AppRoute, TimeDeco
 from pattenrs.behavioral_patterns import AddGameEmailNotifier, ListView, CreateView, BaseSerializer
+from pattenrs.unit_of_work import UnitOfWork
 
 LOGGER = Logger('views')
 
-INTERFACE = Engine()
+ENGINE = Engine()
 
 EMAIL_NOTIFIER = AddGameEmailNotifier()
+
+UnitOfWork.new_current()
+UnitOfWork.get_current().set_mapper_registry(MapperRegistry)
+
+GAME_MAPPER = MapperRegistry.get_current_mapper('game')
+CATEGORY_MAPPER = MapperRegistry.get_current_mapper('category')
+GAMES_CATEGORY_MAPPER = MapperRegistry.get_current_mapper('games_categories')
+CATEGORY_DEPENDENCE_MAPPER = MapperRegistry.get_current_mapper('categories_dependence')
 
 ROUTES = {}
 
@@ -21,14 +32,40 @@ class Index:
 
 
 @AppRoute(routes=ROUTES, url='/store/')
-class Store:
-    @TimeDeco(name='Store')
-    def __call__(self, request):
-        LOGGER.log('Запрос страницы магазина.')
-        return '200 OK', render('store.html',
-                                title='Store',
-                                categories=INTERFACE.categories,
-                                games=INTERFACE.games)
+class Store(ListView):
+    template_name = 'store.html'
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['title'] = 'Store'
+        context['games'] = GAME_MAPPER.all()
+
+        all_categories = deepcopy(ENGINE.categories)
+
+        if CATEGORY_DEPENDENCE_MAPPER.all():
+            for item in CATEGORY_DEPENDENCE_MAPPER.all():
+                main_category = CATEGORY_MAPPER.find_by_id(item[0])
+                sub_category = CATEGORY_MAPPER.find_by_id(item[1])
+
+                for el in all_categories:
+                    if el.id == main_category.id:
+                        all_categories.remove(el)
+
+                for el in all_categories:
+                    if el.id == sub_category.id:
+                        all_categories.remove(el)
+
+                main_category.sub_categories = []
+                main_category.sub_categories.append(sub_category)
+
+                context['categories'] = []
+                context['categories'].append(main_category)
+
+            context['categories'].extend(all_categories)
+        else:
+            context['categories'] = ENGINE.categories
+
+        return context
 
 
 @AppRoute(routes=ROUTES, url='/about/')
@@ -48,35 +85,34 @@ class Contacts:
 
 
 @AppRoute(routes=ROUTES, url='/create-category/')
-class CategoryCreate:
-    @TimeDeco(name='CategoryCreate')
-    def __call__(self, request):
+class CategoryCreate(CreateView):
+    template_name = 'create_category.html'
 
-        if request['method'] == 'POST':
-            data = request['data']
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['title'] = 'Create Category'
+        context['categories'] = ENGINE.categories
+        return context
 
-            name = data['name']
-            name = INTERFACE.decode_value(name)
+    def create_obj(self, data: dict):
+        name = data['name']
+        name = ENGINE.decode_value(name)
 
-            if data['category']:
-                category = INTERFACE.find_category_by_id(int(data['category']))
-            else:
-                category = None
+        new_category = ENGINE.create_category(name)
 
-            new_category = INTERFACE.create_category(name, category)
+        if data['category']:
+            main_category = ENGINE.find_category_by_id(int(data['category']))
+            new_category_dependence_row = ENGINE.create_category_dependence(main_category.id, new_category.id)
+            new_category_dependence_row.mark_new()
+            ENGINE.categories_dependence.append(new_category_dependence_row)
 
-            new_category.observers.append(EMAIL_NOTIFIER)
+        new_category.observers.append(EMAIL_NOTIFIER)
 
-            INTERFACE.categories.append(new_category)
+        ENGINE.categories.append(new_category)
 
-            return '200 OK', render('store.html',
-                                    title='Store',
-                                    categories=INTERFACE.categories,
-                                    games=INTERFACE.games)
-        else:
-            return '200 OK', render('create_category.html',
-                                    title='Create Category',
-                                    categories=INTERFACE.categories)
+        new_category.mark_new()
+
+        UnitOfWork.get_current().commit()
 
 
 @AppRoute(routes=ROUTES, url='/create-game/')
@@ -87,10 +123,10 @@ class GameCreate:
             data = request['data']
 
             name = data['name']
-            name = INTERFACE.decode_value(name)
+            name = ENGINE.decode_value(name)
 
             description = data['description']
-            description = INTERFACE.decode_value(description)
+            description = ENGINE.decode_value(description)
 
             price = data['price']
             release_date = data['release_date']
@@ -98,24 +134,32 @@ class GameCreate:
             categories = []
 
             for el in data['categories']:
-                category = INTERFACE.find_category_by_id(int(el))
+                category = ENGINE.find_category_by_id(int(el))
                 categories.append(category)
 
-            new_game = INTERFACE.create_game(name,
-                                             description,
-                                             price,
-                                             release_date,
-                                             categories)
-            INTERFACE.games.append(new_game)
+            new_game = ENGINE.create_game(name,
+                                          description,
+                                          price,
+                                          release_date)
+            new_game.mark_new()
+
+            for el in categories:
+                new_game_category_row = ENGINE.create_game_category(new_game.id, el.id)
+                new_game_category_row.mark_new()
+                ENGINE.games_categories.append(new_game_category_row)
+
+            ENGINE.games.append(new_game)
+
+            UnitOfWork.get_current().commit()
 
             return '200 OK', render('store.html',
                                     title='Store',
-                                    categories=INTERFACE.categories,
-                                    games=INTERFACE.games)
+                                    categories=ENGINE.categories,
+                                    games=ENGINE.games)
         else:
             return '200 OK', render('create_game.html',
                                     title='Create Game',
-                                    categories=INTERFACE.categories)
+                                    categories=ENGINE.categories)
 
 
 @AppRoute(routes=ROUTES, url='/copy-game/')
@@ -125,30 +169,34 @@ class GameCopy:
         request_params = request['request_params']
 
         name = request_params['name']
-        game_to_copy = INTERFACE.get_game(name)
+        game_to_copy = ENGINE.get_game(name)
         if game_to_copy:
             new_game_name = f'Copy_of_{name}'
             new_game = game_to_copy.clone()
             new_game.name = new_game_name
 
-            categories = []
+            categories = GAMES_CATEGORY_MAPPER.find_by_game_id(game_to_copy.id)
 
-            for el in new_game.categories:
-                category = INTERFACE.find_category_by_id(int(el.id))
-                categories.append(category)
+            new_game_instance = ENGINE.create_game(new_game.name,
+                                                   new_game.description,
+                                                   new_game.price,
+                                                   new_game.release_date)
 
-            new_game_instance = INTERFACE.create_game(new_game.name,
-                                                      new_game.description,
-                                                      new_game.price,
-                                                      new_game.release_date,
-                                                      categories)
+            for el in categories:
+                new_game_category_row = ENGINE.create_game_category(new_game_instance.id, el.id)
+                new_game_category_row.mark_new()
+                ENGINE.games_categories.append(new_game_category_row)
 
-            INTERFACE.games.append(new_game_instance)
+            new_game_instance.mark_new()
+
+            ENGINE.games.append(new_game_instance)
+
+            UnitOfWork.get_current().commit()
 
         return '200 OK', render('store.html',
                                 title='Store',
-                                categories=INTERFACE.categories,
-                                games=INTERFACE.games)
+                                categories=ENGINE.categories,
+                                games=ENGINE.games)
 
 
 @AppRoute(routes=ROUTES, url='/games-list/')
@@ -168,11 +216,16 @@ class GamesListView(ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         queryset.clear()
-        category = INTERFACE.find_category_by_id(int(self.get_request_params()['id']))
-        queryset.extend(category.games)
-        if category.sub_categories:
-            for sub_category in category.sub_categories:
-                queryset.extend(sub_category.games)
+
+        category = CATEGORY_MAPPER.find_by_id(self.get_request_params()['id'])
+        category_games = GAMES_CATEGORY_MAPPER.find_by_category_id(category.id)
+        queryset.extend(category_games)
+
+        sub_categories = CATEGORY_DEPENDENCE_MAPPER.find_by_main_category_id(category.id)
+        if sub_categories:
+            for sub_category in sub_categories:
+                sub_category_games = GAMES_CATEGORY_MAPPER.find_by_category_id(sub_category.id)
+                queryset.extend(sub_category_games)
         return queryset
 
 
@@ -184,38 +237,47 @@ class GameCreateView(CreateView):
         context = super().get_context_data()
         context['title'] = 'Game Adding'
         category_id = int(self.request['request_params']['id'])
-        context['category'] = INTERFACE.find_category_by_id(category_id)
+        context['category'] = ENGINE.find_category_by_id(category_id)
         return context
 
     def create_obj(self, data: dict):
         name = data['name']
-        name = INTERFACE.decode_value(name)
+        name = ENGINE.decode_value(name)
 
         description = data['description']
-        description = INTERFACE.decode_value(description)
+        description = ENGINE.decode_value(description)
 
         price = data['price']
         release_date = data['release_date']
 
-        category = [INTERFACE.find_category_by_id(int(data['category']))]
+        category = ENGINE.find_category_by_id(int(data['category']))
 
-        new_game = INTERFACE.create_game(name,
-                                         description,
-                                         price,
-                                         release_date,
-                                         category)
-        INTERFACE.games.append(new_game)
+        new_game = ENGINE.create_game(name,
+                                      description,
+                                      price,
+                                      release_date)
+
+        new_game.mark_new()
+
+        new_game_category_row = ENGINE.create_game_category(new_game.id, category.id)
+
+        new_game_category_row.mark_new()
+
+        ENGINE.games.append(new_game)
+        ENGINE.games_categories.append(new_game_category_row)
+
+        UnitOfWork.get_current().commit()
 
 
 @AppRoute(routes=ROUTES, url='/categories-api/')
 class CategoriesApi:
     @TimeDeco(name='CategoriesApi')
     def __call__(self, request):
-        return '200 OK', BaseSerializer(INTERFACE.categories).save()
+        return '200 OK', BaseSerializer(ENGINE.categories).save()
 
 
 @AppRoute(routes=ROUTES, url='/games-api/')
 class GamesApi:
     @TimeDeco(name='GamesApi')
     def __call__(self, request):
-        return '200 OK', BaseSerializer(INTERFACE.games).save()
+        return '200 OK', BaseSerializer(ENGINE.games).save()
