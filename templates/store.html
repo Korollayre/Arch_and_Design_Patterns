@@ -46,9 +46,7 @@
         <h1>Список категорий</h1>
         <ul>
             {% for category in categories %}
-            {% if category.main_category %}
 
-            {% else %}
             <li>
                 {{ category.name }} Количество игр: {{ category.games_count() }}. <a href="/games-list/?id={{ category.id }}">Посмотреть игры</a>
             </li>
@@ -60,7 +58,7 @@
                 {% endfor %}
             </ul>
 
-            {% endif %}
+
             {% endfor %}
         </ul>
         <a href="/create-category/">Создание категории</a>
