@@ -60,10 +60,12 @@ class Game(GamePrototype, DomainObject):
     """
     Класс - общий интерфейс игр.
     """
-    auto_id = itertools.count(1)
+    auto_id = 1
 
-    def __init__(self, name, description, price, release_date):
-        self.id = next(Game.auto_id)
+    def __init__(self, name, description, price, release_date, new_game=True):
+        if new_game:
+            self.id = Game.auto_id
+            Game.auto_id += 1
         self.name = name
         self.description = description
         self.price = price
@@ -81,7 +83,7 @@ class GameMapper:
         self.cursor.execute(statement)
         res = []
         for item in self.cursor.fetchall():
-            game = Game(*item[1:])
+            game = Game(*item[1:], new_game=False)
             game.id = item[0]
             res.append(game)
         return res
@@ -90,7 +92,7 @@ class GameMapper:
         statement = f'SELECT * FROM {self.table_name} WHERE id = ?'
         self.cursor.execute(statement, (str(obj_id),))
         res = self.cursor.fetchone()
-        game = Game(*res[1:])
+        game = Game(*res[1:], new_game=False)
         game.id = res[0]
         return game
 
@@ -134,10 +136,12 @@ class Category(Subject, DomainObject):
     """
     Класс-интерфейс категорий игр.
     """
-    auto_id = itertools.count(1)
+    auto_id = 1
 
-    def __init__(self, name):
-        self.id = next(Category.auto_id)
+    def __init__(self, name, new_category=True):
+        if new_category:
+            self.id = Category.auto_id
+            Category.auto_id += 1
         self.name = name
         super().__init__()
 
@@ -174,7 +178,7 @@ class CategoryMapper:
         self.cursor.execute(statement)
         res = []
         for item in self.cursor.fetchall():
-            category = Category(*item[1:])
+            category = Category(*item[1:], new_category=False)
             category.id = item[0]
             res.append(category)
         return res
@@ -183,7 +187,7 @@ class CategoryMapper:
         statement = f'SELECT * FROM {self.table_name} WHERE id = ?'
         self.cursor.execute(statement, (str(obj_id),))
         res = self.cursor.fetchone()
-        category = Category(*res[1:])
+        category = Category(*res[1:], new_category=False)
         category.id = res[0]
         return category
 
