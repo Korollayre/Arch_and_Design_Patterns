@@ -23,6 +23,39 @@ CATEGORY_DEPENDENCE_MAPPER = MapperRegistry.get_current_mapper('categories_depen
 ROUTES = {}
 
 
+def add_categories_to_context():
+    """
+    Функция, создающая список categories,
+    в котором хранятся категории с их подкатегориями
+    """
+    all_categories = deepcopy(ENGINE.categories)
+
+    if CATEGORY_DEPENDENCE_MAPPER.all():
+        categories = []
+        for item in CATEGORY_DEPENDENCE_MAPPER.all():
+            main_category = CATEGORY_MAPPER.find_by_id(item[0])
+            sub_category = CATEGORY_MAPPER.find_by_id(item[1])
+
+            for el in all_categories:
+                if el.id == main_category.id:
+                    all_categories.remove(el)
+
+            for el in all_categories:
+                if el.id == sub_category.id:
+                    all_categories.remove(el)
+
+            main_category.sub_categories = []
+            main_category.sub_categories.append(sub_category)
+
+            categories.append(main_category)
+
+        categories.extend(all_categories)
+    else:
+        categories = ENGINE.categories
+
+    return categories
+
+
 @AppRoute(routes=ROUTES, url='/')
 class Index:
     @TimeDeco(name='Index')
@@ -39,31 +72,7 @@ class Store(ListView):
         context = super().get_context_data()
         context['title'] = 'Store'
         context['games'] = GAME_MAPPER.all()
-
-        all_categories = deepcopy(ENGINE.categories)
-
-        if CATEGORY_DEPENDENCE_MAPPER.all():
-            for item in CATEGORY_DEPENDENCE_MAPPER.all():
-                main_category = CATEGORY_MAPPER.find_by_id(item[0])
-                sub_category = CATEGORY_MAPPER.find_by_id(item[1])
-
-                for el in all_categories:
-                    if el.id == main_category.id:
-                        all_categories.remove(el)
-
-                for el in all_categories:
-                    if el.id == sub_category.id:
-                        all_categories.remove(el)
-
-                main_category.sub_categories = []
-                main_category.sub_categories.append(sub_category)
-
-                context['categories'] = []
-                context['categories'].append(main_category)
-
-            context['categories'].extend(all_categories)
-        else:
-            context['categories'] = ENGINE.categories
+        context['categories'] = add_categories_to_context()
 
         return context
 
@@ -154,12 +163,12 @@ class GameCreate:
 
             return '200 OK', render('store.html',
                                     title='Store',
-                                    categories=ENGINE.categories,
+                                    categories=add_categories_to_context(),
                                     games=ENGINE.games)
         else:
             return '200 OK', render('create_game.html',
                                     title='Create Game',
-                                    categories=ENGINE.categories)
+                                    categories=add_categories_to_context())
 
 
 @AppRoute(routes=ROUTES, url='/copy-game/')
@@ -195,7 +204,7 @@ class GameCopy:
 
         return '200 OK', render('store.html',
                                 title='Store',
-                                categories=ENGINE.categories,
+                                categories=add_categories_to_context(),
                                 games=ENGINE.games)
 
 
